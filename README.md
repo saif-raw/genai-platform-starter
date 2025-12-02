@@ -51,3 +51,6 @@ Call any model using a unified API:
 - Quotas
 
 ### 🔹 Deployment
+- cd deployment/cdk
+- npm install
+- cdk deploy

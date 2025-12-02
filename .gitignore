@@ -1,0 +1,19 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.pyc
+
+# AWS CDK
+cdk.out/
+*.asset.*
+
+# VSCode
+.vscode/
+
+# Environment files
+.env
+*.pem
