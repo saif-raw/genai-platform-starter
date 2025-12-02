@@ -1,0 +1,12 @@
+Intialize Project
+cd genai-platform-starter/deployment
+mkdir cdk
+cd cdk
+cdk init app --language typescript
+
+
+# Go to deployment/cdk
+npm install
+npm run build
+cdk bootstrap
+cdk deploy

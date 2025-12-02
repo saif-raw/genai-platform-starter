@@ -1,0 +1,19 @@
+                +------------------------------+
+                |    Frontend / API Client     |
+                | (Optional: Postman, curl)    |
+                +---------------+--------------+
+                                |
+                                v
+                   (HTTPS)  Amazon API Gateway
+                                |
+                                v
++-------------------------------------------------------------------+
+|                         AWS Lambda (Node.js)                      |
+|  - Receives POST request                                          |
+|  - Calls AWS Bedrock model via SDK                                |
+|  - Returns model response                                          |
++-------------------------------------------------------------------+
+                                |
+                                v
+                     Amazon Bedrock Runtime
+                (Claude, Llama, Titan — FREE use via quota)
