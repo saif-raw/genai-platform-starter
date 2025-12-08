@@ -10,3 +10,13 @@ npm install
 npm run build
 cdk bootstrap
 cdk deploy
+cdk deploy --require-approval never
+
+
+# Frontend
+cd frontend\genai-pro-dashboard
+npm install
+# Add .env with VITE_API_BASE="https://oog4ijyedb.execute-api.ap-south-1.amazonaws.com/prod"
+npm run dev
+
+

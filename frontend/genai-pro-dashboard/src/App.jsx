@@ -1,3 +1,4 @@
+// genai-pro-dashborad/src/App.jsx
 import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProviderSelector from "./components/ProviderSelector";
@@ -87,4 +88,3 @@ export default function App() {
     </div>
   );
 }
-// src/App.jsx

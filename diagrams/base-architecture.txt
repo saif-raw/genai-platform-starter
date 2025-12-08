@@ -17,3 +17,38 @@
                                 v
                      Amazon Bedrock Runtime
                 (Claude, Llama, Titan — FREE use via quota)
+
+
+
+
+
+
+
+
+
+
+                   [ User / Client App ]
+                             |
+                             v
+     +---------------------------------------------------+
+     |               Amazon API Gateway                  |
+     |  - Public HTTPS endpoint                           |
+     |  - Handles authentication                          |
+     |  - Routes to Lambda                                |
+     +---------------------------------------------------+
+                              |
+                              v
+     +---------------------------------------------------+
+     |                   AWS Lambda                      |
+     |  - Node.js runtime                                 |
+     |  - Calls Bedrock model                             |
+     |  - Returns generated output                        |
+     +---------------------------------------------------+
+                              |
+                              v
+     +---------------------------------------------------+
+     |              Amazon Bedrock Runtime               |
+     |  - Claude 3 Sonnet (free quota)                   |
+     |  - Llama 3.x (free quota)                         |
+     |  - Titan (free)                                   |
+     +---------------------------------------------------+
