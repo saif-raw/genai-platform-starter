@@ -5,7 +5,10 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.650.0",
     "@aws-sdk/client-dynamodb": "^3.592.0",
-    "@aws-sdk/lib-dynamodb": "^3.592.0"
+    "@aws-sdk/lib-dynamodb": "^3.592.0",
+    "node-fetch": "^2.7.0",
+    "openai": "^6.10.0"
   }
 }

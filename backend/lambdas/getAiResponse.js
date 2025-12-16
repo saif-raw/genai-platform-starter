@@ -18,96 +18,109 @@ const defaultHeaders = {
 
 exports.handler = async (event) => {
   try {
-
-    // FIXED: declare path at the top
     const path = event.requestContext?.resourcePath || event.path || "";
-    const region = process.env.AWS_REGION || "unknown-region";
-    const now = new Date().toISOString();
     const qs = event.queryStringParameters || {};
+    // const now = new Date().toISOString(); // Not used, can be removed or left.
 
-    // CORS preflight
+    // Handle OPTIONS pre-flight request
     if (event.httpMethod === "OPTIONS") {
-      return {
-        statusCode: 200,
-        headers: defaultHeaders,
-        body: JSON.stringify({ ok: true })
-      };
+      return { statusCode: 200, headers: defaultHeaders, body: JSON.stringify({ ok: true }) };
     }
 
-    // GET /v1/hello
+    // Handle GET /hello endpoint
     if (event.httpMethod === "GET" && path.endsWith("/hello")) {
       return {
         statusCode: 200,
         headers: defaultHeaders,
-        body: JSON.stringify({
-          ok: true,
-          message: "GenAI endpoint active. POST JSON { prompt, userId, projectId }"
-        })
+        body: JSON.stringify({ ok: true, message: "GenAI endpoint active" })
       };
     }
 
-    // parse JSON body
+    // -------- BULLETPROOF BODY PARSING (Simplified) --------
     let body = {};
-    if (event.body) {
-      try { body = JSON.parse(event.body); }
-      catch { body = { rawBody: event.body }; }
-    }
+    let rawBody = event.body;
 
-    // health check: GET /v1/hello?ping=1
-    if ((event.httpMethod === "GET" && qs.ping === "1") ||
-        path.endsWith("/ping")) {
-      return {
-        statusCode: 200,
-        headers: defaultHeaders,
-        body: JSON.stringify({ ok: true, type: "ping", timestamp: now })
-      };
-    }
+    if (rawBody) {
+      // 1. Base64 decode if required (Standard API Gateway Proxy Behavior)
+      if (event.isBase64Encoded) {
+        rawBody = Buffer.from(rawBody, "base64").toString("utf-8");
+      }
 
-    const payload = {
-      provider: qs.provider || body.provider || process.env.DEFAULT_PROVIDER || "fallback",
-      model: qs.model || body.model || process.env.DEFAULT_MODEL || "default-model",
-      prompt: body.prompt || qs.prompt || "Okay AAAAAAAAAAAAAHHHHHHHHHHHHHH!",
-      userId: body.userId || qs.userId || "KABIRA",
-      projectId: body.projectId || qs.projectId || "default-project"
-    };
-
-    const { result, usage } = await route({ payload });
-
-    // write usage
-    if (process.env.USAGE_TABLE_NAME && ddb) {
       try {
-        await ddb.send(
-          new PutCommand({
-            TableName: process.env.USAGE_TABLE_NAME,
-            Item: {
-              id: `${usage.timestamp}#${Math.random().toString(36).slice(2, 8)}`,
-              ...usage
-            }
-          })
-        );
+        // 2. Parse the JSON string
+        body = JSON.parse(rawBody);
+
+        // 3. Handle double-encoded JSON (if the initial parse yields a string)
+        if (typeof body === "string") {
+          body = JSON.parse(body);
+        }
       } catch (err) {
-        console.error("DDB write error:", err);
+        console.error("BODY PARSE FAILED:", err, rawBody);
+        return {
+          statusCode: 400,
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            error: "Invalid JSON body or malformed request.",
+            hint: "Ensure your curl command is properly escaping the JSON payload, especially on Windows CMD."
+          })
+        };
       }
     }
 
-    return {
-      statusCode: 200,
-      headers: defaultHeaders,
-      body: JSON.stringify({
-        message: `Routed to ${result.provider} / ${result.model}`,
-        timestamp: now,
-        region,
-        result,
-        usage
-      })
+    // Construct payload, prioritizing body, then querystring, then environment variables
+    const payload = {
+      provider: body.provider || qs.provider || process.env.DEFAULT_PROVIDER,
+      model: body.model || qs.model || process.env.DEFAULT_MODEL,
+      prompt: body.prompt || qs.prompt || "Hello!",
+      userId: body.userId || qs.userId || "anonymous",
+      projectId: body.projectId || qs.projectId || "default-project"
     };
 
+    // Route to the LLM handler
+    //const { result, usage } = await route({ payload });
+    // --- CRITICAL DEBUGGING STEP ---
+    console.log("Final Payload for LLM:", JSON.stringify(payload, null, 2));
+
+    // Route to the LLM handler
+    const { result, usage } = await route({ payload });
+
+
+    // Write usage to DynamoDB
+    if (process.env.USAGE_TABLE_NAME && ddb) {
+      try {
+        await ddb.send(new PutCommand({
+          TableName: process.env.USAGE_TABLE_NAME,
+          Item: {
+            id: `${usage.timestamp}#${Math.random().toString(36).slice(2, 8)}`,
+            ...usage
+          }
+        }));
+      } catch (e) {
+        console.error("DynamoDB write failed:", e);
+      }
+    }
+
+    // Return successful response
+    return {
+          statusCode: 200,
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            message: result.text, // Directly return the LLM response text
+            provider: result.provider,
+            model: result.model,
+            usage
+          })
+        };
+
   } catch (err) {
-    console.error("Lambda error:", err);
+    console.error("Top-level Lambda error:", err);
     return {
       statusCode: 500,
       headers: defaultHeaders,
-      body: JSON.stringify({ error: "Internal server error", detail: err.toString() })
+      body: JSON.stringify({
+        error: "Internal server error during LLM routing or execution.",
+        detail: err.message 
+      })
     };
   }
 };

@@ -9,7 +9,7 @@ import MetricsPanel from "./components/MetricsPanel";
 import { callGenerate, fetchAdminUsage } from "./api";
 
 export default function App() {
-  const apiBase = import.meta.env.VITE_API_BASE || "https://oog4ijyedb.execute-api.ap-south-1.amazonaws.com/prod";
+  const apiBase = import.meta.env.VITE_API_BASE || "https://oog4ijyedb.execute-api.us-east-1.amazonaws.com/prod";
   const [provider, setProvider] = useState("fallback");
   const [model, setModel] = useState("");
   const [sessions, setSessions] = useState([]);

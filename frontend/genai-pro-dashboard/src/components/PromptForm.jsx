@@ -1,4 +1,4 @@
-// genai-pro-dashborad/src/components/PromptForm.jsx
+// frontend/genai-pro-dashborad/src/components/PromptForm.jsx
 import React, { useState } from "react";
 
 export default function PromptForm({ onSend, provider, model }) {

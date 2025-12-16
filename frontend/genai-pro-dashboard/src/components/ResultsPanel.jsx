@@ -1,3 +1,4 @@
+// frontend/genai-pro-dashboard/src/components/ResultsPanel.jsx
 import React from "react";
 
 export default function ResultsPanel({ lastResponse }) {
@@ -29,4 +30,3 @@ export default function ResultsPanel({ lastResponse }) {
     </div>
   );
 }
-// src/components/ResultsPanel.jsx
