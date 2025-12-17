@@ -3,8 +3,8 @@ import React, { useState } from "react";
 
 export default function PromptForm({ onSend, provider, model }) {
   const [prompt, setPrompt] = useState("");
-  const [userId, setUserId] = useState("saif");
-  const [projectId, setProjectId] = useState("dashboard");
+  const [userId, setUserId] = useState("Saif Ansari");
+  const [projectId, setProjectId] = useState("Gen-AI-Pro-Dashboard");
 
   const handleSubmit = async (e) => {
     e.preventDefault();

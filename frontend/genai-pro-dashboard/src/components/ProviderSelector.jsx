@@ -1,5 +1,6 @@
-// frontend/genai-pro-dashboard/src/components/ProviderSelector.jsx
+// src/components/ProviderSelector.jsx
 import React from "react";
+import { GROQ_CHAT_MODELS } from "../config/groqModels";
 
 export default function ProviderSelector({ provider, setProvider, model, setModel }) {
   return (
@@ -12,12 +13,25 @@ export default function ProviderSelector({ provider, setProvider, model, setMode
         <option value="groq">Groq</option>
       </select>
 
-      <input
-        value={model}
-        onChange={e => setModel(e.target.value)}
-        placeholder="openai/gpt-oss-20b"
-        className="px-3 py-2 border rounded-md bg-white"
-      />
+      {provider === "groq" ? (
+        <select
+          value={model}
+          onChange={e => setModel(e.target.value)}
+          className="px-3 py-2 border rounded-md bg-white min-w-[260px]"
+        >
+          {GROQ_CHAT_MODELS.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          value={model}
+          onChange={e => setModel(e.target.value)}
+          className="px-3 py-2 border rounded-md bg-white"
+        />
+      )}
     </div>
   );
 }

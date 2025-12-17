@@ -10,7 +10,7 @@ import { callGenerate, fetchAdminUsage } from "./api";
 
 export default function App() {
   const apiBase = import.meta.env.VITE_API_BASE || "https://oog4ijyedb.execute-api.us-east-1.amazonaws.com/prod";
-  const [provider, setProvider] = useState("fallback");
+  const [provider, setProvider] = useState("groq");
   const [model, setModel] = useState("");
   const [sessions, setSessions] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -38,22 +38,24 @@ export default function App() {
   async function onSend({ prompt, provider: p, model: m, userId, projectId }) {
     setLoading(true);
     try {
-      const { ok, json } = await callGenerate({ prompt, provider: p, model: m, userId, projectId });
-      const entry = {
-        timestamp: new Date().toISOString(),
-        result: json.result || { provider: "none", model: "none", text: json?.result?.text || json?.message || "" },
-        usage: json.usage || { tokens: 0, prompt_snippet: prompt },
-        message: json.message || ""
-      };
+      const entry = await callGenerate({
+        prompt,
+        provider: p,
+        model: m,
+        userId,
+        projectId
+      });
+
       setSessions(s => [entry, ...s].slice(0, 500));
       setSelected(entry);
     } catch (err) {
-      console.error("send error", err);
-      alert("Send failed: " + String(err));
+      console.error("Send failed:", err);
+      alert(err.message || "Request failed");
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <div>

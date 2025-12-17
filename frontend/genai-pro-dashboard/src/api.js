@@ -1,9 +1,7 @@
 // frontend/genai-pro-dashboard/src/api.js
-// Simple wrapper for calling your GenAI API.
-// Update VITE_API_BASE in your environment or replace with endpoint string.
 
 const RAW_BASE = import.meta.env.VITE_API_BASE;
-const API_BASE = RAW_BASE.replace(/\/$/, ""); // prevent double slash
+const API_BASE = RAW_BASE.replace(/\/$/, "");
 
 export async function callGenerate({
   prompt,
@@ -13,19 +11,29 @@ export async function callGenerate({
   projectId = "dashboard"
 }) {
   const url = `${API_BASE}/v1/hello`;
-  const payload = { prompt, provider, model, userId, projectId };
 
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ prompt, provider, model, userId, projectId })
   });
 
-  const json = await res
-    .json()
-    .catch(() => ({ error: "invalid-json", status: res.status }));
+  const json = await res.json();
 
-  return { ok: res.ok, status: res.status, json };
+  if (!res.ok) {
+    throw new Error(json?.error || "Request failed");
+  }
+
+  // 🔑 NORMALIZE BACKEND RESPONSE
+  return {
+    timestamp: new Date().toISOString(),
+    result: {
+      provider: json.provider,
+      model: json.model,
+      text: json.message
+    },
+    usage: json.usage || {}
+  };
 }
 
 export async function fetchAdminUsage(lastN = 50, apiKey = null) {
