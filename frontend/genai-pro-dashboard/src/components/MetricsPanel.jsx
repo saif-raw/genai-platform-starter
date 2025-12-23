@@ -1,5 +1,7 @@
-// src/components/MetricsPanel.jsx
+// frontend/genai-pro-dashboard/src/components/MetricsPanel.jsx
 import React, { useMemo } from "react";
+import { aggregateSessions } from "../utils/metrics";
+
 import {
   Chart as ChartJS,
   BarElement,
@@ -18,8 +20,8 @@ ChartJS.register(
   PointElement
 );
 
-export default function MetricsPanel({ sessions }) {
-  const metrics = useMemo(() => {
+export default function MetricsPanel({ sessions, view }) {
+  const basicMetrics = useMemo(() => {
     const totalCalls = sessions.length;
 
     const totalTokens = sessions.reduce(
@@ -40,54 +42,133 @@ export default function MetricsPanel({ sessions }) {
     return { totalCalls, totalTokens, avgTokens, providers };
   }, [sessions]);
 
-  const providerLabels = Object.keys(metrics.providers);
-  const providerCounts = providerLabels.map(p => metrics.providers[p]);
+  const costMetrics = useMemo(
+    () => aggregateSessions(sessions),
+    [sessions]
+  );
 
-  const tokensOverTime = {
-    labels: sessions.map(s =>
-      new Date(s.timestamp).toLocaleTimeString()
-    ),
-    datasets: [
-      {
-        label: "Tokens per call",
-        data: sessions.map(s => s.usage?.totalTokens || 0),
-        tension: 0.3
-      }
-    ]
-  };
+  if (!sessions.length) {
+    return <div className="text-slate-500">No data yet</div>;
+  }
 
-  return (
-    <div className="bg-white border rounded-md p-4 space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <Metric label="Total Calls" value={metrics.totalCalls} />
-        <Metric label="Total Tokens" value={metrics.totalTokens} />
-        <Metric label="Avg Tokens / Call" value={metrics.avgTokens} />
-      </div>
+  /* ---------- OVERVIEW ---------- */
+  if (view === "Overview") {
+    const providerLabels = Object.keys(basicMetrics.providers);
+    const providerCounts = providerLabels.map(
+      p => basicMetrics.providers[p]
+    );
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-3 border rounded-md">
-          <div className="text-sm font-medium mb-2">Provider usage</div>
-          {providerLabels.length ? (
+    const tokensOverTime = {
+      labels: sessions.map(s =>
+        new Date(s.timestamp).toLocaleTimeString()
+      ),
+      datasets: [
+        {
+          label: "Tokens per call",
+          data: sessions.map(s => s.usage?.totalTokens || 0),
+          tension: 0.3
+        }
+      ]
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-4 gap-4">
+          <Metric label="Total Calls" value={basicMetrics.totalCalls} />
+          <Metric label="Total Tokens" value={basicMetrics.totalTokens} />
+          <Metric label="Avg Tokens / Call" value={basicMetrics.avgTokens} />
+          <Metric
+            label="Total Cost (EUR)"
+            value={`$${costMetrics.totalCost.toFixed(4)}`}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-3 border rounded-md">
+            <div className="text-sm font-medium mb-2">
+              Provider Usage
+            </div>
             <Bar
               data={{
                 labels: providerLabels,
-                datasets: [{ label: "Calls", data: providerCounts }]
+                datasets: [
+                  { label: "Calls", data: providerCounts }
+                ]
               }}
             />
-          ) : (
-            <div className="text-slate-500">No provider data</div>
-          )}
-        </div>
+          </div>
 
-        <div className="p-3 border rounded-md">
-          <div className="text-sm font-medium mb-2">Tokens over time</div>
-          {sessions.length ? (
+          <div className="p-3 border rounded-md">
+            <div className="text-sm font-medium mb-2">
+              Tokens Over Time
+            </div>
             <Line data={tokensOverTime} />
-          ) : (
-            <div className="text-slate-500">No data yet</div>
-          )}
+          </div>
         </div>
       </div>
+    );
+  }
+
+  /* ---------- COST ---------- */
+  if (view === "Cost") {
+    return renderBar("Cost by Model", costMetrics.byModel);
+  }
+
+  if (view === "Usage by Project") {
+    return renderBar("Cost by Project", costMetrics.byProject);
+  }
+
+  if (view === "Usage by Department") {
+    return renderBar("Cost by Department", costMetrics.byDepartment);
+  }
+
+  if (view === "Models") {
+    return renderBar("Model Usage Cost", costMetrics.byModel);
+  }
+
+  if (view === "Audit Logs") {
+    return (
+      <div className="space-y-2">
+        {sessions.map((s, i) => (
+          <div
+            key={i}
+            className="border p-3 rounded-md text-sm"
+          >
+            <div className="font-medium truncate">
+              {s.prompt}
+            </div>
+            <div className="text-slate-500 truncate">
+              {s.result?.text}
+            </div>
+            <div className="text-xs text-slate-400 mt-1">
+              {s.result?.model} • {s.usage?.totalTokens} tokens
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function renderBar(title, data) {
+  const labels = Object.keys(data || {});
+  const values = Object.values(data || {});
+
+  if (!labels.length) {
+    return <div className="text-slate-500">No data</div>;
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <h2 className="text-lg font-semibold mb-4">{title}</h2>
+      <Bar
+        data={{
+          labels,
+          datasets: [{ label: title, data: values }]
+        }}
+      />
     </div>
   );
 }

@@ -20,14 +20,11 @@ exports.handler = async (event) => {
   try {
     const path = event.requestContext?.resourcePath || event.path || "";
     const qs = event.queryStringParameters || {};
-    // const now = new Date().toISOString(); // Not used, can be removed or left.
 
-    // Handle OPTIONS pre-flight request
     if (event.httpMethod === "OPTIONS") {
       return { statusCode: 200, headers: defaultHeaders, body: JSON.stringify({ ok: true }) };
     }
 
-    // Handle GET /hello endpoint
     if (event.httpMethod === "GET" && path.endsWith("/hello")) {
       return {
         statusCode: 200,
@@ -36,38 +33,17 @@ exports.handler = async (event) => {
       };
     }
 
-    // -------- BULLETPROOF BODY PARSING (Simplified) --------
     let body = {};
     let rawBody = event.body;
 
     if (rawBody) {
-      // 1. Base64 decode if required (Standard API Gateway Proxy Behavior)
       if (event.isBase64Encoded) {
         rawBody = Buffer.from(rawBody, "base64").toString("utf-8");
       }
-
-      try {
-        // 2. Parse the JSON string
-        body = JSON.parse(rawBody);
-
-        // 3. Handle double-encoded JSON (if the initial parse yields a string)
-        if (typeof body === "string") {
-          body = JSON.parse(body);
-        }
-      } catch (err) {
-        console.error("BODY PARSE FAILED:", err, rawBody);
-        return {
-          statusCode: 400,
-          headers: defaultHeaders,
-          body: JSON.stringify({
-            error: "Invalid JSON body or malformed request.",
-            hint: "Ensure your curl command is properly escaping the JSON payload, especially on Windows CMD."
-          })
-        };
-      }
+      body = JSON.parse(rawBody);
+      if (typeof body === "string") body = JSON.parse(body);
     }
 
-    // Construct payload, prioritizing body, then querystring, then environment variables
     const payload = {
       provider: body.provider || qs.provider || process.env.DEFAULT_PROVIDER,
       model: body.model || qs.model || process.env.DEFAULT_MODEL,
@@ -76,16 +52,36 @@ exports.handler = async (event) => {
       projectId: body.projectId || qs.projectId || "default-project"
     };
 
-    // Route to the LLM handler
-    //const { result, usage } = await route({ payload });
-    // --- CRITICAL DEBUGGING STEP ---
-    console.log("Final Payload for LLM:", JSON.stringify(payload, null, 2));
-
-    // Route to the LLM handler
     const { result, usage } = await route({ payload });
 
+    /* ---------------- NEW: Persist Session ---------------- */
 
-    // Write usage to DynamoDB
+    if (process.env.SESSIONS_TABLE_NAME && ddb) {
+      try {
+        await ddb.send(new PutCommand({
+          TableName: process.env.SESSIONS_TABLE_NAME,
+          Item: {
+            sessionId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            timestamp: new Date().toISOString(),
+            userId: payload.userId,
+            projectId: payload.projectId,
+            provider: result.provider,
+            model: result.model,
+            prompt: payload.prompt,
+            response: result.text,
+            latencyMs: usage.latencyMs,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            totalTokens: usage.totalTokens
+          }
+        }));
+      } catch (e) {
+        console.error("Session persistence failed:", e);
+      }
+    }
+
+    /* ---------------- Existing Usage Write (unchanged) ---------------- */
+
     if (process.env.USAGE_TABLE_NAME && ddb) {
       try {
         await ddb.send(new PutCommand({
@@ -96,31 +92,26 @@ exports.handler = async (event) => {
           }
         }));
       } catch (e) {
-        console.error("DynamoDB write failed:", e);
+        console.error("Usage write failed:", e);
       }
     }
 
-    // Return successful response
     return {
-          statusCode: 200,
-          headers: defaultHeaders,
-          body: JSON.stringify({
-            message: result.text, // Directly return the LLM response text
-            provider: result.provider,
-            model: result.model,
-            usage
-          })
-        };
+      statusCode: 200,
+      headers: defaultHeaders,
+      body: JSON.stringify({
+        message: result.text,
+        provider: result.provider,
+        model: result.model,
+        usage
+      })
+    };
 
   } catch (err) {
-    console.error("Top-level Lambda error:", err);
     return {
       statusCode: 500,
       headers: defaultHeaders,
-      body: JSON.stringify({
-        error: "Internal server error during LLM routing or execution.",
-        detail: err.message 
-      })
+      body: JSON.stringify({ error: err.message })
     };
   }
 };

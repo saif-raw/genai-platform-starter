@@ -11,13 +11,21 @@ export class CdkStack extends cdk.Stack {
     super(scope, id, props);
 
     /* ---------------- DynamoDB ---------------- */
+
     const usageTable = new dynamodb.Table(this, "GenAiUsageTable", {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY // DEV ONLY
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
+
+    const sessionsTable = new dynamodb.Table(this, "GenAiSessionsTable", {
+      partitionKey: { name: "sessionId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY
     });
 
     /* ---------------- Main GenAI Lambda ---------------- */
+
     const genAiLambda = new lambda.Function(this, "GenAiHelloLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: "getAiResponse.handler",
@@ -26,37 +34,37 @@ export class CdkStack extends cdk.Stack {
       environment: {
         DEFAULT_PROVIDER: "groq",
         DEFAULT_MODEL: "openai/gpt-oss-20b",
-        USAGE_TABLE_NAME: usageTable.tableName
+        USAGE_TABLE_NAME: usageTable.tableName,
+        SESSIONS_TABLE_NAME: sessionsTable.tableName
       }
     });
 
     usageTable.grantWriteData(genAiLambda);
+    sessionsTable.grantWriteData(genAiLambda);
 
     /* ---------------- Admin Usage Lambda ---------------- */
+
     const adminLambda = new lambda.Function(this, "AdminUsageLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: "adminUsage.handler",
       code: lambda.Code.fromAsset("../../backend/lambdas"),
       timeout: cdk.Duration.seconds(15),
       environment: {
-        USAGE_TABLE_NAME: usageTable.tableName
+        SESSIONS_TABLE_NAME: sessionsTable.tableName
       }
     });
-
-    usageTable.grantReadData(adminLambda);
+    
+    sessionsTable.grantReadData(adminLambda);
 
     /* ---------------- API Gateway ---------------- */
+
     const api = new apigateway.RestApi(this, "GenAiApi", {
       restApiName: "GenAiPlatformApi",
       deployOptions: { stageName: "prod" },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: [
-          "Content-Type",
-          "X-Api-Key",
-          "Authorization"
-        ]
+        allowHeaders: ["Content-Type", "X-Api-Key", "Authorization"]
       }
     });
 
@@ -70,12 +78,8 @@ export class CdkStack extends cdk.Stack {
     const usage = admin.addResource("usage");
     usage.addMethod("GET", new apigateway.LambdaIntegration(adminLambda));
 
-    new cdk.CfnOutput(this, "GenAiApiEndpoint", {
-      value: api.url,
-      description: "Base URL for GenAI API"
-    });
-
     /* ---------------- CloudWatch ---------------- */
+
     const dashboard = new cloudwatch.Dashboard(this, "GenAiDashboard", {
       dashboardName: "GenAiPlatformDashboard"
     });
