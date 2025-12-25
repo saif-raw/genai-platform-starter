@@ -1,14 +1,20 @@
-// deployment/cdk/lib/cdk-stack.ts
+// backend/deployment/cdk/lib/cdk-stack.ts
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      env: { region: "us-east-1" }
+    });
 
     /* ---------------- DynamoDB ---------------- */
 
@@ -24,7 +30,7 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
 
-    /* ---------------- Main GenAI Lambda ---------------- */
+    /* ---------------- Main Lambda ---------------- */
 
     const genAiLambda = new lambda.Function(this, "GenAiHelloLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -42,7 +48,7 @@ export class CdkStack extends cdk.Stack {
     usageTable.grantWriteData(genAiLambda);
     sessionsTable.grantWriteData(genAiLambda);
 
-    /* ---------------- Admin Usage Lambda ---------------- */
+    /* ---------------- Admin Lambda ---------------- */
 
     const adminLambda = new lambda.Function(this, "AdminUsageLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -53,7 +59,7 @@ export class CdkStack extends cdk.Stack {
         SESSIONS_TABLE_NAME: sessionsTable.tableName
       }
     });
-    
+
     sessionsTable.grantReadData(adminLambda);
 
     /* ---------------- API Gateway ---------------- */
@@ -78,6 +84,34 @@ export class CdkStack extends cdk.Stack {
     const usage = admin.addResource("usage");
     usage.addMethod("GET", new apigateway.LambdaIntegration(adminLambda));
 
+    /* ---------------- Frontend Hosting ---------------- */
+
+    const frontendBucket = new s3.Bucket(this, "GenAiFrontendBucket", {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
+
+    const distribution = new cloudfront.Distribution(this, "GenAiFrontendCDN", {
+      defaultRootObject: "index.html",
+      defaultBehavior: {
+        origin: new origins.S3Origin(frontendBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+      },
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: "/index.html"
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: "/index.html"
+        }
+      ]
+    });
+
     /* ---------------- CloudWatch ---------------- */
 
     const dashboard = new cloudwatch.Dashboard(this, "GenAiDashboard", {
@@ -98,5 +132,15 @@ export class CdkStack extends cdk.Stack {
         left: [genAiLambda.metricDuration()]
       })
     );
+
+    /* ---------------- Outputs ---------------- */
+
+    new cdk.CfnOutput(this, "FrontendURL", {
+      value: `https://${distribution.domainName}`
+    });
+
+    new cdk.CfnOutput(this, "ApiBaseUrl", {
+      value: api.url
+    });
   }
 }
