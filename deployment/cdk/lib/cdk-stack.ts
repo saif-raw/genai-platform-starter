@@ -84,34 +84,6 @@ export class CdkStack extends cdk.Stack {
     const usage = admin.addResource("usage");
     usage.addMethod("GET", new apigateway.LambdaIntegration(adminLambda));
 
-    /* ---------------- Frontend Hosting ---------------- */
-
-    const frontendBucket = new s3.Bucket(this, "GenAiFrontendBucket", {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true
-    });
-
-    const distribution = new cloudfront.Distribution(this, "GenAiFrontendCDN", {
-      defaultRootObject: "index.html",
-      defaultBehavior: {
-        origin: new origins.S3Origin(frontendBucket),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-      },
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html"
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html"
-        }
-      ]
-    });
-
     /* ---------------- CloudWatch ---------------- */
 
     const dashboard = new cloudwatch.Dashboard(this, "GenAiDashboard", {
@@ -134,10 +106,6 @@ export class CdkStack extends cdk.Stack {
     );
 
     /* ---------------- Outputs ---------------- */
-
-    new cdk.CfnOutput(this, "FrontendURL", {
-      value: `https://${distribution.domainName}`
-    });
 
     new cdk.CfnOutput(this, "ApiBaseUrl", {
       value: api.url
