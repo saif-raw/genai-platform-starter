@@ -1,3 +1,4 @@
+// frontend/genai-pro-dashboard/tailwind.config.cjs
 module.exports = {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {

@@ -1,3 +1,4 @@
+// frontend/genai-pro-dashboard/src/components/Header.jsx
 import { Link } from "react-router-dom";
 
 export default function Header({ apiBase, showAdminLink = false }) {
@@ -20,7 +21,7 @@ export default function Header({ apiBase, showAdminLink = false }) {
               to="/admin"
               className="font-medium text-slate-700 hover:underline"
             >
-              Dashboard
+              {/* Dashboard */}
             </Link>
           )}
           <span className="text-slate-600">

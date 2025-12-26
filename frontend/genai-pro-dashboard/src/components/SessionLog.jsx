@@ -1,4 +1,4 @@
-// src/components/SessionLog.jsx
+// frontend/genai-pro-dashboard/src/components/SessionLog.jsx
 import React from "react";
 
 export default function SessionLog({ sessions, onSelect }) {

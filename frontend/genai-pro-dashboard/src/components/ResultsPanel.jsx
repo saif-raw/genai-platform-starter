@@ -1,4 +1,4 @@
-// src/components/ResultsPanel.jsx
+// frontend/genai-pro-dashboard/src/components/ResultsPanel.jsx
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

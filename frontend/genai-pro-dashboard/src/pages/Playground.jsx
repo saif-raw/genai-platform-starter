@@ -7,11 +7,10 @@ import ResultsPanel from "../components/ResultsPanel";
 import SessionLog from "../components/SessionLog";
 import OrgSelector from "../components/OrgSelector";
 import { callGenerate } from "../api";
-import { useSessions } from "../context/SessionContext";
+import { SessionProvider, useSessions } from "../context/SessionContext";
 
-export default function Playground() {
-  const apiBase =
-    import.meta.env.VITE_API_BASE;
+function PlaygroundInner() {
+  const apiBase = import.meta.env.VITE_API_BASE;
 
   const { sessions, selectedSession, setSelectedSession, addSession } =
     useSessions();
@@ -82,12 +81,17 @@ export default function Playground() {
         </section>
 
         <aside>
-          <SessionLog
-            sessions={sessions}
-            onSelect={setSelectedSession}
-          />
+          <SessionLog sessions={sessions} onSelect={setSelectedSession} />
         </aside>
       </main>
     </div>
+  );
+}
+
+export default function Playground() {
+  return (
+    <SessionProvider useLocalOnly={true}>
+      <PlaygroundInner />
+    </SessionProvider>
   );
 }
