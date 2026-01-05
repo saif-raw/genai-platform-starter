@@ -79,7 +79,7 @@ export default function MetricsPanel({ sessions, view }) {
           <Metric label="Avg Tokens / Call" value={basicMetrics.avgTokens} />
           <Metric
             label="Total Cost (EUR)"
-            value={`$${costMetrics.totalCost.toFixed(4)}`}
+            value={`€ ${costMetrics.totalCost.toFixed(4)}`}
           />
         </div>
 
