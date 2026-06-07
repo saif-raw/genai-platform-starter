@@ -7,14 +7,12 @@ import SessionLog from "../components/SessionLog";
 import { SessionProvider, useSessions } from "../context/SessionContext";
 
 function DashboardInner() {
-  const apiBase = import.meta.env.VITE_API_BASE;
-
   const { sessions } = useSessions();
   const [activeView, setActiveView] = useState("Overview");
 
   return (
     <div>
-      <Header apiBase={apiBase} />
+      <Header />
 
       <div className="flex h-[calc(100vh-72px)]">
         <Sidebar selected={activeView} onSelect={setActiveView} />
@@ -31,7 +29,7 @@ function DashboardInner() {
 
 export default function Dashboard() {
   return (
-    <SessionProvider useLocalOnly={false}>
+    <SessionProvider>
       <DashboardInner />
     </SessionProvider>
   );

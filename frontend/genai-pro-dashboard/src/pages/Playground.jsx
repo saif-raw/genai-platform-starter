@@ -10,8 +10,6 @@ import { callGenerate } from "../api";
 import { SessionProvider, useSessions } from "../context/SessionContext";
 
 function PlaygroundInner() {
-  const apiBase = import.meta.env.VITE_API_BASE;
-
   const { sessions, selectedSession, setSelectedSession, addSession } =
     useSessions();
 
@@ -46,7 +44,7 @@ function PlaygroundInner() {
 
   return (
     <div>
-      <Header apiBase={apiBase} showAdminLink />
+      <Header showAdminLink />
 
       <main className="max-w-7xl mx-auto p-4 grid grid-cols-3 gap-6">
         <section className="col-span-2 space-y-4">
@@ -90,7 +88,7 @@ function PlaygroundInner() {
 
 export default function Playground() {
   return (
-    <SessionProvider useLocalOnly={true}>
+    <SessionProvider>
       <PlaygroundInner />
     </SessionProvider>
   );

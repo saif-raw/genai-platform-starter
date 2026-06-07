@@ -1,7 +1,7 @@
 // frontend/genai-pro-dashboard/src/components/Header.jsx
 import { Link } from "react-router-dom";
 
-export default function Header({ apiBase, showAdminLink = false }) {
+export default function Header({ showAdminLink = false }) {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -11,7 +11,7 @@ export default function Header({ apiBase, showAdminLink = false }) {
           </div>
           <div>
             <div className="text-lg font-semibold">Gen AI - Pro Dashboard</div>
-            {/* <div className="text-xs text-slate-500">{apiBase}</div> */}
+            <div className="text-xs text-slate-500">Running on GitHub Pages + Groq API</div>
           </div>
         </div>
 

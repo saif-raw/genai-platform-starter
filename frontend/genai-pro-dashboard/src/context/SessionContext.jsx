@@ -4,42 +4,27 @@ import { fetchAdminUsage, normalizeAdminUsage } from "../api";
 
 const SessionContext = createContext(null);
 
-export function SessionProvider({ children, useLocalOnly = false }) {
+export function SessionProvider({ children, useLocalOnly = true }) {
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
 
-  // Load sessions depending on context
+  // On GitHub Pages, always use localStorage (useLocalOnly is now default true)
   useEffect(() => {
-    if (useLocalOnly) {
-      // User local storage only
-      try {
-        const stored = localStorage.getItem("user_sessions");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) setSessions(parsed);
-        }
-      } catch (e) {
-        console.error("Failed to load local sessions", e);
+    try {
+      const stored = localStorage.getItem("user_sessions");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setSessions(parsed);
       }
-    } else {
-      // Admin / dashboard: fetch from DynamoDB
-      async function loadSessions() {
-        const resp = await fetchAdminUsage(100);
-        if (resp?.usage) {
-          const normalized = normalizeAdminUsage(resp.usage);
-          setSessions(normalized);
-        }
-      }
-      loadSessions();
+    } catch (e) {
+      console.error("Failed to load local sessions", e);
     }
-  }, [useLocalOnly]);
+  }, []);
 
   function addSession(entry) {
     setSessions(prev => {
       const updated = [entry, ...prev].slice(0, 500);
-      if (useLocalOnly) {
-        localStorage.setItem("user_sessions", JSON.stringify(updated));
-      }
+      localStorage.setItem("user_sessions", JSON.stringify(updated));
       return updated;
     });
     setSelectedSession(entry);
