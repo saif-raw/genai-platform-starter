@@ -1,8 +1,10 @@
 // frontend/genai-pro-dashboard/src/api.js
-// Direct Groq API calls - no AWS backend needed
+// Direct Groq API calls + Optional standalone backend support
+// Works on GitHub Pages (localStorage) or with standalone Node.js backend
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_API_BASE = "https://api.groq.com/openai/v1";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || null; // Optional backend
 
 /* ========================================
    DIRECT GROQ API CALLS (NO AWS BACKEND)
@@ -83,6 +85,9 @@ export async function callGenerate({
     // Store in localStorage for usage tracking
     storeUsageEntry(entry);
 
+    // Also send to backend if available (optional)
+    sendToBackend(entry).catch(err => console.warn("Backend sync failed:", err.message));
+
     return entry;
   } catch (error) {
     throw new Error(error.message || "Failed to call Groq API");
@@ -101,6 +106,36 @@ export function storeUsageEntry(entry) {
     localStorage.setItem(key, JSON.stringify(updated));
   } catch (e) {
     console.warn("Could not store usage entry:", e);
+  }
+}
+
+/* ========================================
+   OPTIONAL BACKEND SYNC
+   ======================================== */
+
+export async function sendToBackend(entry) {
+  if (!BACKEND_URL) return; // No backend configured
+
+  try {
+    await fetch(`${BACKEND_URL}/api/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: entry.prompt,
+        userId: entry.userId,
+        projectId: entry.projectId,
+        model: entry.result.model,
+        provider: entry.result.provider,
+        response: entry.result.text,
+        latencyMs: entry.usage.latencyMs,
+        inputTokens: entry.usage.inputTokens,
+        outputTokens: entry.usage.outputTokens,
+        totalTokens: entry.usage.totalTokens
+      })
+    });
+  } catch (err) {
+    // Silently fail - backend is optional
+    throw err;
   }
 }
 
@@ -128,10 +163,37 @@ export function clearStoredUsage() {
    ======================================== */
 
 export async function fetchAdminUsage(lastN = 50, apiKey = null) {
-  // On GitHub Pages, return local storage data instead of DynamoDB
+  // Try backend first, fall back to localStorage
+  if (BACKEND_URL) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/usage?limit=${lastN}`);
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          usage: normalizeAdminUsage(data.recentSessions || []),
+          stats: {
+            totalRequests: data.totalRequests,
+            totalTokensUsed: data.totalTokensUsed,
+            avgLatencyMs: data.avgLatencyMs
+          }
+        };
+      }
+    } catch (err) {
+      console.warn("Backend fetch failed, falling back to localStorage:", err.message);
+    }
+  }
+
+  // Fallback to localStorage
   const usage = getStoredUsage(lastN);
   return {
-    usage: normalizeAdminUsage(usage)
+    usage: normalizeAdminUsage(usage),
+    stats: {
+      totalRequests: usage.length,
+      totalTokensUsed: usage.reduce((sum, u) => sum + (u.usage?.totalTokens || 0), 0),
+      avgLatencyMs: usage.length > 0 
+        ? Math.round(usage.reduce((sum, u) => sum + (u.usage?.latencyMs || 0), 0) / usage.length)
+        : 0
+    }
   };
 }
 
