@@ -2,7 +2,7 @@
 
 ## What Was Done
 
-Your project has been **completely transformed** from an AWS-dependent platform to a **standalone, cloud-agnostic, free-to-deploy** AI application perfect for your portfolio.
+This project has been **completely transformed** from an AWS-dependent platform to a **standalone, cloud-agnostic, free-to-deploy** AI application perfect for personal use.
 
 ---
 
